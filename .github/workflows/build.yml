@@ -1,0 +1,36 @@
+name: Build YT-MP3 exe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: python -m pip install -U pip pyinstaller yt-dlp
+
+      - name: Descargar ffmpeg
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_tmp
+          $ff = Get-ChildItem -Path ffmpeg_tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          Copy-Item $ff.FullName ffmpeg.exe
+
+      - name: Compilar
+        run: >
+          python -m PyInstaller --noconfirm --clean --onefile --windowed
+          --name YT-MP3 --collect-all yt_dlp
+          --add-binary "ffmpeg.exe;." ytmp3.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YT-MP3-windows
+          path: dist/YT-MP3.exe
